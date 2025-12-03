@@ -1,0 +1,48 @@
+.level-selector {
+  background: none;
+  padding: 0;
+  box-shadow: none;
+  border: none;
+}
+
+.card-section {
+  background: #ffffff;
+  padding: 2.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 10px 15px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  margin-bottom: 2rem;
+  border-radius: 10px;
+}
+
+.card-section h2 {
+  margin: 0 0 2.5rem 0;
+  color: #1e293b;
+  font-size: 2.125rem;
+  font-weight: 600;
+  text-align: left;
+  letter-spacing: -0.025em;
+}
+
+.levels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 2rem;
+}
+
+.level-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.speech-levels-grid {
+  display: flex;
+  justify-content: space-around;
+  gap: 20px;
+}
+
+.speech-level-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
