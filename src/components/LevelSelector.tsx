@@ -1,6 +1,5 @@
 import React from 'react';
 import type { Level } from '../types';
-import { ProgressBar } from './ProgressBar';
 
 interface LevelSelectorProps {
   levels: (Level & { progress?: number })[];
@@ -49,17 +48,18 @@ export const LevelSelector: React.FC<LevelSelectorProps> = ({
                   <div className="level-name">{level.name}</div>
                   <div className="level-description">{level.description}</div>
                   {level.id > 2 && level.unlocked && onRegenerate && (
-                    <button
-                      className="level-regenerate-button"
+                    <div
+                      className={`level-regenerate-button ${isRegenerating && isRegenerating(level.id) ? 'disabled' : ''}`}
                       onClick={(e) => {
                         e.stopPropagation(); // Prevent triggering level select
-                        onRegenerate(level.id);
+                        if (!isRegenerating || !isRegenerating(level.id)) {
+                          onRegenerate(level.id);
+                        }
                       }}
-                      disabled={isRegenerating ? isRegenerating(level.id) : false}
                       title={`Regenerate Level ${level.id} content`}
                     >
                       {isRegenerating && isRegenerating(level.id) ? '⏳' : '↻'}
-                    </button>
+                    </div>
                   )}
                 </div>
                 {!level.unlocked && <div className="lock-icon">🔒</div>}
@@ -90,17 +90,18 @@ export const LevelSelector: React.FC<LevelSelectorProps> = ({
                     {!level.unlocked && <div className="lock-icon">🔒</div>}
                   </button>
                   {level.id > 2 && level.unlocked && onRegenerate && (
-                    <button
-                      className="level-regenerate-button"
+                    <div
+                      className={`level-regenerate-button ${isRegenerating && isRegenerating(level.id) ? 'disabled' : ''}`}
                       onClick={(e) => {
                         e.stopPropagation(); // Prevent triggering level select
-                        onRegenerate(level.id);
+                        if (!isRegenerating || !isRegenerating(level.id)) {
+                          onRegenerate(level.id);
+                        }
                       }}
-                      disabled={isRegenerating ? isRegenerating(level.id) : false}
                       title={`Regenerate Level ${level.id} content`}
                     >
                       {isRegenerating && isRegenerating(level.id) ? '⏳' : '↻'}
-                    </button>
+                    </div>
                   )}
                 </div>
               ))}

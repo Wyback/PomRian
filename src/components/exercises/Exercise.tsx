@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import type { Exercise as ExerciseType, ExerciseCard, Level } from '../types';
-import { Card } from './Card';
-import { ProgressBar } from './ProgressBar';
-import { playCorrectSound, playIncorrectSound } from '../services/llmService';
+import type { Exercise as ExerciseType, ExerciseCard, Level } from '../../types';
+import { Card } from '../Card';
+import { ProgressBar } from '../ProgressBar';
+import { playCorrectSound, playIncorrectSound } from '../../services/soundService';
 
 interface ExerciseProps {
   level: Level;

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import type { Exercise as ExerciseType, ExerciseCard, Level } from '../types';
-import { generateDailyLifeQuestions, type GeneratedQuestion, playCorrectSound, playIncorrectSound } from '../services/llmService';
-import { useThaiSpeech } from '../services/ttsService';
-import { Card } from './Card';
+import type { Exercise as ExerciseType, ExerciseCard, Level } from '../../types';
+import { generateWords, type GeneratedWord } from '../../services/llmService';
+import { playCorrectSound, playIncorrectSound } from '../../services/soundService';
+import { useThaiSpeech } from '../../services/ttsService';
+import { Card } from '../Card';
 
-interface SpeechQuestionsMultipleChoiceExerciseProps {
+interface SpeechWordsMultipleChoiceExerciseProps {
   level: Level;
   onComplete: (levelId: number) => void;
   onBack: () => void;
@@ -13,7 +14,7 @@ interface SpeechQuestionsMultipleChoiceExerciseProps {
   currentProgress?: number;
 }
 
-export const SpeechQuestionsMultipleChoiceExercise: React.FC<SpeechQuestionsMultipleChoiceExerciseProps> = ({
+export const SpeechWordsMultipleChoiceExercise: React.FC<SpeechWordsMultipleChoiceExerciseProps> = ({
   level,
   onComplete,
   onBack,
@@ -21,7 +22,7 @@ export const SpeechQuestionsMultipleChoiceExercise: React.FC<SpeechQuestionsMult
   onProgress,
   currentProgress = 0,
 }) => {
-  const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
+  const [words, setWords] = useState<GeneratedWord[]>([]);
   const [currentExercise, setCurrentExercise] = useState<ExerciseType | null>(null);
   const [selectedCard, setSelectedCard] = useState<ExerciseCard | null>(null);
   const [showResult, setShowResult] = useState(false);
@@ -33,66 +34,71 @@ export const SpeechQuestionsMultipleChoiceExercise: React.FC<SpeechQuestionsMult
   const { speak, isPlaying, isSupported } = useThaiSpeech(currentExercise?.target.thai || '');
 
   useEffect(() => {
-    const loadQuestions = async () => {
+    const loadWords = async () => {
       try {
         setLoading(true);
         setError(null);
-        const generatedQuestions = await generateDailyLifeQuestions(30); // More questions for variety
-        setQuestions(generatedQuestions);
-        const newExercise = generateQuestionExercise(generatedQuestions);
+        const generatedWords = await generateWords(50); // More words for variety
+        setWords(generatedWords);
+        const newExercise = generateWordExercise(generatedWords);
         setCurrentExercise(newExercise);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load questions');
-        console.error('Failed to load questions:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load words');
+        console.error('Failed to load words:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    loadQuestions();
-  }, [isSupported]);
+    loadWords();
+  }, [isSupported]); // Depend on isSupported to ensure speech API is ready
 
-  const generateQuestionExercise = (questionList: GeneratedQuestion[]): ExerciseType => {
-    if (questionList.length === 0) {
-      throw new Error('No questions available for exercise generation');
+  const generateWordExercise = (wordList: GeneratedWord[]): ExerciseType => {
+    if (wordList.length === 0) {
+      throw new Error('No words available for exercise generation');
     }
 
-    const correctQuestion = questionList[Math.floor(Math.random() * questionList.length)];
+    // Pick a random correct word
+    const correctWord = wordList[Math.floor(Math.random() * wordList.length)];
 
-    const wrongAnswers = questionList.filter(question => question.thai !== correctQuestion.thai);
+    // Get 3 wrong answers
+    const wrongAnswers = wordList.filter(word => word.thai !== correctWord.thai);
     const selectedWrongAnswers = wrongAnswers
       .sort(() => Math.random() - 0.5)
       .slice(0, 3);
 
+    // Create target (what the user needs to find) - listen to Thai word
     const target = {
-      thai: correctQuestion.thai,
-      phonetic: correctQuestion.phonetic,
+      thai: correctWord.thai,
+      phonetic: correctWord.phonetic,
     };
 
+    // Create cards - show English and phonetic
     const cards: ExerciseCard[] = [
       {
-        id: `correct-${correctQuestion.thai}`,
-        thai: '',
-        phonetic: correctQuestion.phoneticAnswer,
-        english: correctQuestion.englishAnswer,
+        id: `correct-${correctWord.thai}`,
+        thai: '', // Empty, so phonetic-only and English meaning are displayed
+        phonetic: correctWord.phonetic,
+        english: correctWord.english,
         isCorrect: true,
       },
       ...selectedWrongAnswers.map((wrong, index) => ({
         id: `wrong-${index}-${wrong.thai}`,
-        thai: '',
-        phonetic: wrong.phoneticAnswer,
-        english: wrong.englishAnswer,
+        thai: '', // Empty, so phonetic-only and English meaning are displayed
+        phonetic: wrong.phonetic,
+        english: wrong.english,
         isCorrect: false,
       })),
     ];
 
+    // Shuffle cards
     const shuffledCards = cards.sort(() => Math.random() - 0.5);
 
     return {
       level: level.id,
       target,
       cards: shuffledCards,
-      correctAnswer: cards.find(card => card.isCorrect)!,
+      correctAnswer: cards.find(card => card.isCorrect)!, // The correct one
       completed: false,
     };
   };
@@ -103,6 +109,7 @@ export const SpeechQuestionsMultipleChoiceExercise: React.FC<SpeechQuestionsMult
     setSelectedCard(card);
     setShowResult(true);
 
+    // Check if answer is correct
     if (card.isCorrect) {
       setCorrectCount(prev => prev + 1);
       // Call progress callback for persistent tracking
@@ -114,23 +121,24 @@ export const SpeechQuestionsMultipleChoiceExercise: React.FC<SpeechQuestionsMult
       playIncorrectSound();
     }
 
+    // Move to next exercise after a delay
     setTimeout(() => {
       if (correctCount + (card.isCorrect ? 1 : 0) >= totalExercises) {
         onComplete(level.id);
       } else {
-        const newExercise = generateQuestionExercise(questions);
+        const newExercise = generateWordExercise(words);
         setCurrentExercise(newExercise);
         setSelectedCard(null);
         setShowResult(false);
       }
-    }, 2500);
+    }, 2000);
   };
 
   if (loading) {
     return (
       <div className="exercise-loading">
         <div className="loading-spinner"></div>
-        <p>🔊 Loading daily life questions...</p>
+        <p>🔊 Loading speech words...</p>
       </div>
     );
   }

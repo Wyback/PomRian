@@ -2,18 +2,19 @@ import { useState } from 'react';
 import type { Level, UserProgress } from './types';
 import { generateLLMContent, isLLMContentAvailable, regenerateWords, regenerateSentences, regenerateQuestions } from './services/llmService';
 import { LevelSelector } from './components/LevelSelector';
-import { CharactersExercise } from './components/CharactersExercise';
-import { CharactersAdvancedExercise } from './components/CharactersAdvancedExercise';
-import { WordsMultipleChoiceExercise } from './components/WordsMultipleChoiceExercise';
-import { WordsExercise } from './components/WordsExercise';
-import { SentencesMultipleChoiceExercise } from './components/SentencesMultipleChoiceExercise';
-import { SentencesAdvancedExercise } from './components/SentencesAdvancedExercise';
-import { SpeechWordsMultipleChoiceExercise } from './components/SpeechWordsMultipleChoiceExercise';
-import { SpeechWordsInputExercise } from './components/SpeechWordsInputExercise';
-import { SpeechSentencesMultipleChoiceExercise } from './components/SpeechSentencesMultipleChoiceExercise';
-import { SpeechSentencesInputExercise } from './components/SpeechSentencesInputExercise';
-import { SpeechQuestionsMultipleChoiceExercise } from './components/SpeechQuestionsMultipleChoiceExercise';
-import { SpeechQuestionsInputExercise } from './components/SpeechQuestionsInputExercise';
+// Exercise components
+import { CharactersExercise } from './components/exercises/CharactersExercise';
+import { CharactersAdvancedExercise } from './components/exercises/CharactersAdvancedExercise';
+import { WordsMultipleChoiceExercise } from './components/exercises/WordsMultipleChoiceExercise';
+import { WordsExercise } from './components/exercises/WordsExercise';
+import { SentencesMultipleChoiceExercise } from './components/exercises/SentencesMultipleChoiceExercise';
+import { SentencesAdvancedExercise } from './components/exercises/SentencesAdvancedExercise';
+import { SpeechWordsMultipleChoiceExercise } from './components/exercises/SpeechWordsMultipleChoiceExercise';
+import { SpeechWordsInputExercise } from './components/exercises/SpeechWordsInputExercise';
+import { SpeechSentencesMultipleChoiceExercise } from './components/exercises/SpeechSentencesMultipleChoiceExercise';
+import { SpeechSentencesInputExercise } from './components/exercises/SpeechSentencesInputExercise';
+import { SpeechQuestionsMultipleChoiceExercise } from './components/exercises/SpeechQuestionsMultipleChoiceExercise';
+import { SpeechQuestionsInputExercise } from './components/exercises/SpeechQuestionsInputExercise';
 import { SettingsModal } from './components/SettingsModal';
 import './App.css';
 
@@ -252,7 +253,7 @@ function App() {
       case 1:
         return <CharactersExercise {...exerciseProps} onProgress={(correct) => handleLevelProgress(1, correct)} currentProgress={persistentLevelProgress[1] || 0} />;
       case 2:
-        return <CharactersAdvancedExercise {...exerciseProps} showPhonetic={true} onProgress={(correct) => handleLevelProgress(2, correct)} currentProgress={persistentLevelProgress[2] || 0} />;
+        return <CharactersAdvancedExercise {...exerciseProps} onProgress={(correct) => handleLevelProgress(2, correct)} currentProgress={persistentLevelProgress[2] || 0} />;
       case 3:
         return <WordsMultipleChoiceExercise {...exerciseProps} onProgress={(correct) => handleLevelProgress(3, correct)} currentProgress={persistentLevelProgress[3] || 0} />;
       case 4:

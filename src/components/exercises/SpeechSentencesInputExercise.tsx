@@ -1,17 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import type { Exercise as ExerciseType, Level } from '../types';
-import { generateSentences, type GeneratedSentence } from '../services/llmService';
+import type { Exercise as ExerciseType, Level } from '../../types';
+import { generateSentences, type GeneratedSentence } from '../../services/llmService';
+import { playCorrectSound, playIncorrectSound } from '../../services/soundService';
+import { useThaiSpeech } from '../../services/ttsService';
 
-interface SentencesExerciseProps {
+interface SpeechSentencesInputExerciseProps {
   level: Level;
   onComplete: (levelId: number) => void;
   onBack: () => void;
+  showPhonetic: boolean; // New prop for phonetic visibility
+  onProgress?: (correctAnswers: number) => void;
+  currentProgress?: number;
 }
 
-export const SentencesExercise: React.FC<SentencesExerciseProps> = ({
+export const SpeechSentencesInputExercise: React.FC<SpeechSentencesInputExerciseProps> = ({
   level,
   onComplete,
   onBack,
+  showPhonetic, // Destructure new prop
+  onProgress,
+  currentProgress = 0,
 }) => {
   const [sentences, setSentences] = useState<GeneratedSentence[]>([]);
   const [currentExercise, setCurrentExercise] = useState<ExerciseType | null>(null);
@@ -23,16 +31,17 @@ export const SentencesExercise: React.FC<SentencesExerciseProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const { speak, isPlaying, isSupported } = useThaiSpeech(currentExercise?.target.thai || '');
+
   useEffect(() => {
     const loadSentences = async () => {
       try {
         setLoading(true);
         setError(null);
-        const generatedSentences = await generateSentences(20);
+        const generatedSentences = await generateSentences(30); // More sentences for variety
         setSentences(generatedSentences);
-        if (!currentExercise) {
-          setCurrentExercise(generateSentenceExercise(generatedSentences));
-        }
+        const newExercise = generateSentenceExercise(generatedSentences);
+        setCurrentExercise(newExercise);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load sentences');
         console.error('Failed to load sentences:', err);
@@ -42,7 +51,7 @@ export const SentencesExercise: React.FC<SentencesExerciseProps> = ({
     };
 
     loadSentences();
-  }, []);
+  }, [isSupported]);
 
   const generateSentenceExercise = (sentenceList: GeneratedSentence[]): ExerciseType => {
     if (sentenceList.length === 0) {
@@ -78,14 +87,21 @@ export const SentencesExercise: React.FC<SentencesExerciseProps> = ({
 
     if (correct) {
       setCorrectCount(prev => prev + 1);
+      // Call progress callback for persistent tracking
+      onProgress?.(1);
+      // Play correct sound
+      playCorrectSound();
+    } else {
+      // Play incorrect sound
+      playIncorrectSound();
     }
 
-    // Auto-advance after showing result
     setTimeout(() => {
       if (correctCount + (correct ? 1 : 0) >= totalExercises) {
         onComplete(level.id);
       } else {
-        setCurrentExercise(generateSentenceExercise(sentences));
+        const newExercise = generateSentenceExercise(sentences);
+        setCurrentExercise(newExercise);
         setUserInput('');
         setShowResult(false);
       }
@@ -102,7 +118,7 @@ export const SentencesExercise: React.FC<SentencesExerciseProps> = ({
     return (
       <div className="exercise-loading">
         <div className="loading-spinner"></div>
-        <p>📝 Loading sentences...</p>
+        <p>🔊 Loading speech sentences...</p>
       </div>
     );
   }
@@ -126,7 +142,8 @@ export const SentencesExercise: React.FC<SentencesExerciseProps> = ({
     return <div className="loading">Loading exercise...</div>;
   }
 
-  const progress = ((correctCount + (showResult && isCorrect ? 1 : 0)) / totalExercises) * 100;
+  // Show persistent progress instead of session progress
+  const progress = Math.min((currentProgress / 100) * 100, 100);
 
   return (
     <div className="exercise">
@@ -138,12 +155,15 @@ export const SentencesExercise: React.FC<SentencesExerciseProps> = ({
       </div>
 
       <div className="exercise-content">
+        <div className="speech-playback">
+          {!isSupported && <p className="error-message">Speech synthesis not supported in your browser.</p>}
+          <button onClick={speak} disabled={!isSupported || isPlaying} className="play-button">
+            {isPlaying ? '⏸️' : '▶️'}
+          </button>
+        </div>
 
-        <div className="exercise-target">
-          <div className="target-display">
-            <div className="target-thai-sentence">{currentExercise.target.thai}</div>
-            <div className="target-english">{currentExercise.target.english}</div>
-          </div>
+        <div className="target-display">
+          <div className="target-thai-sentence">{currentExercise.target.thai}</div>
         </div>
 
         <div className="input-section">
@@ -168,7 +188,7 @@ export const SentencesExercise: React.FC<SentencesExerciseProps> = ({
 
         {showResult && (
           <div className={`result ${isCorrect ? 'correct' : 'incorrect'}`}>
-            {isCorrect ? '✅ Correct!' : `❌ Incorrect! The correct answer is: ${currentExercise.target.phonetic}`}
+            {isCorrect ? '✅ Correct!' : `❌ Incorrect! The correct answer is: ${showPhonetic ? currentExercise.target.phonetic : '[Hidden]'}`}
           </div>
         )}
       </div>

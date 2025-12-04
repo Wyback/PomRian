@@ -1,23 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import type { Exercise as ExerciseType, Level } from '../types';
-import { generateSentences, type GeneratedSentence, playCorrectSound, playIncorrectSound } from '../services/llmService';
+import type { Exercise as ExerciseType, Level } from '../../types';
+import { generateSentences, type GeneratedSentence } from '../../services/llmService';
 
-interface SentencesAdvancedExerciseProps {
+interface SentencesExerciseProps {
   level: Level;
   onComplete: (levelId: number) => void;
   onBack: () => void;
-  showPhonetic: boolean; // New prop for phonetic visibility
-  onProgress?: (correctAnswers: number) => void;
-  currentProgress?: number;
 }
 
-export const SentencesAdvancedExercise: React.FC<SentencesAdvancedExerciseProps> = ({
+export const SentencesExercise: React.FC<SentencesExerciseProps> = ({
   level,
   onComplete,
   onBack,
-  showPhonetic, // Destructure new prop
-  onProgress,
-  currentProgress = 0,
 }) => {
   const [sentences, setSentences] = useState<GeneratedSentence[]>([]);
   const [currentExercise, setCurrentExercise] = useState<ExerciseType | null>(null);
@@ -34,7 +28,7 @@ export const SentencesAdvancedExercise: React.FC<SentencesAdvancedExerciseProps>
       try {
         setLoading(true);
         setError(null);
-        const generatedSentences = await generateSentences(25); // More sentences for variety
+        const generatedSentences = await generateSentences(20);
         setSentences(generatedSentences);
         if (!currentExercise) {
           setCurrentExercise(generateSentenceExercise(generatedSentences));
@@ -84,16 +78,9 @@ export const SentencesAdvancedExercise: React.FC<SentencesAdvancedExerciseProps>
 
     if (correct) {
       setCorrectCount(prev => prev + 1);
-      // Call progress callback for persistent tracking
-      onProgress?.(1);
-      // Play correct sound
-      playCorrectSound();
-    } else {
-      // Play incorrect sound
-      playIncorrectSound();
     }
 
-    // Auto-advance after showing result (slightly faster for advanced level)
+    // Auto-advance after showing result
     setTimeout(() => {
       if (correctCount + (correct ? 1 : 0) >= totalExercises) {
         onComplete(level.id);
@@ -102,7 +89,7 @@ export const SentencesAdvancedExercise: React.FC<SentencesAdvancedExerciseProps>
         setUserInput('');
         setShowResult(false);
       }
-    }, 2000);
+    }, 2500); // Slightly longer for sentences
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -115,7 +102,7 @@ export const SentencesAdvancedExercise: React.FC<SentencesAdvancedExerciseProps>
     return (
       <div className="exercise-loading">
         <div className="loading-spinner"></div>
-        <p>🎯 Loading advanced sentences...</p>
+        <p>📝 Loading sentences...</p>
       </div>
     );
   }
@@ -139,8 +126,7 @@ export const SentencesAdvancedExercise: React.FC<SentencesAdvancedExerciseProps>
     return <div className="loading">Loading exercise...</div>;
   }
 
-  // Show persistent progress instead of session progress
-  const progress = Math.min((currentProgress / 100) * 100, 100);
+  const progress = ((correctCount + (showResult && isCorrect ? 1 : 0)) / totalExercises) * 100;
 
   return (
     <div className="exercise">
@@ -182,7 +168,7 @@ export const SentencesAdvancedExercise: React.FC<SentencesAdvancedExerciseProps>
 
         {showResult && (
           <div className={`result ${isCorrect ? 'correct' : 'incorrect'}`}>
-            {isCorrect ? '🎉 Perfect!' : `❌ Incorrect! The correct answer is: ${showPhonetic ? currentExercise.target.phonetic : '[Hidden]'}`}
+            {isCorrect ? '✅ Correct!' : `❌ Incorrect! The correct answer is: ${currentExercise.target.phonetic}`}
           </div>
         )}
       </div>

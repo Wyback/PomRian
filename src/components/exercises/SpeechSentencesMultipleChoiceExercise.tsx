@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import type { Exercise as ExerciseType, ExerciseCard, Level } from '../types';
-import { generateSentences, type GeneratedSentence, playCorrectSound, playIncorrectSound } from '../services/llmService';
-import { useThaiSpeech } from '../services/ttsService';
-import { Card } from './Card';
+import type { Exercise as ExerciseType, ExerciseCard, Level } from '../../types';
+import { generateSentences, type GeneratedSentence } from '../../services/llmService';
+import { playCorrectSound, playIncorrectSound } from '../../services/soundService';
+import { useThaiSpeech } from '../../services/ttsService';
+import { Card } from '../Card';
 
 interface SpeechSentencesMultipleChoiceExerciseProps {
   level: Level;

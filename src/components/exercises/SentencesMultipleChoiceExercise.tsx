@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import type { Exercise as ExerciseType, ExerciseCard, Level } from '../types';
-import { generateWords, type GeneratedWord } from '../services/llmService';
+import type { Exercise as ExerciseType, ExerciseCard, Level } from '../../types';
+import { generateSentences, type GeneratedSentence } from '../../services/llmService';
 import { Exercise } from './Exercise';
 
-interface WordsMultipleChoiceExerciseProps {
+interface SentencesMultipleChoiceExerciseProps {
   level: Level;
   onComplete: (levelId: number) => void;
   onBack: () => void;
@@ -12,83 +12,74 @@ interface WordsMultipleChoiceExerciseProps {
   currentProgress?: number;
 }
 
-export const WordsMultipleChoiceExercise: React.FC<WordsMultipleChoiceExerciseProps> = ({
+export const SentencesMultipleChoiceExercise: React.FC<SentencesMultipleChoiceExerciseProps> = ({
   level,
   onComplete,
   onBack,
-  showPhonetic,
+  showPhonetic, // Destructure new prop
   onProgress,
   currentProgress = 0,
 }) => {
-  const [words, setWords] = useState<GeneratedWord[]>([]);
+  const [sentences, setSentences] = useState<GeneratedSentence[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadWords = async () => {
+    const loadSentences = async () => {
       try {
         setLoading(true);
         setError(null);
-        const generatedWords = await generateWords(50); // More words for variety
-        setWords(generatedWords);
+        const generatedSentences = await generateSentences(30); // More sentences for variety
+        setSentences(generatedSentences);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load words');
-        console.error('Failed to load words:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load sentences');
+        console.error('Failed to load sentences:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    loadWords();
+    loadSentences();
   }, []);
 
-  const generateWordExercise = (): ExerciseType => {
-    if (words.length === 0) {
-      throw new Error('No words available for exercise generation');
+  const generateSentenceExercise = (): ExerciseType => {
+    if (sentences.length === 0) {
+      throw new Error('No sentences available for exercise generation');
     }
 
-    // Pick a random correct word
-    const correctWord = words[Math.floor(Math.random() * words.length)];
+    // Pick a random correct sentence
+    const correctSentence = sentences[Math.floor(Math.random() * sentences.length)];
 
-    // Get 3 wrong answers
-    const wrongAnswers = words.filter(word => word.thai !== correctWord.thai);
+    // Get 3 wrong answers from other sentences
+    const wrongAnswers = sentences.filter(sentence => sentence.thai !== correctSentence.thai);
     const selectedWrongAnswers = wrongAnswers
       .sort(() => Math.random() - 0.5)
       .slice(0, 3);
 
-    // Create target (what the user needs to find) - show Thai word
+    // Create target (what the user needs to find) - show Thai sentence
     const target = {
-      thai: correctWord.thai,
-      phonetic: correctWord.phonetic,
+      thai: correctSentence.thai,
+      phonetic: correctSentence.phonetic,
+      english: correctSentence.english,
     };
 
     // Create cards - show phonetic transcriptions with English meanings
     const cards: ExerciseCard[] = [
       {
-        id: `correct-${correctWord.thai}`,
-        thai: '', // Empty - will show phonetic + english
-        phonetic: correctWord.phonetic,
+        id: `correct-${correctSentence.thai}`,
+        thai: '', // Empty, so phonetic-only and English meaning are displayed
+        phonetic: correctSentence.phonetic,
+        english: correctSentence.english,
         isCorrect: true,
       },
       ...selectedWrongAnswers.map((wrong, index) => ({
         id: `wrong-${index}-${wrong.thai}`,
-        thai: '', // Empty - will show phonetic + english
+        thai: '', // Empty, so phonetic-only and English meaning are displayed
         phonetic: wrong.phonetic,
+        english: wrong.english,
         isCorrect: false,
       })),
     ];
-
-    // Store the English meanings for the cards
-    cards.forEach(card => {
-      if (card.isCorrect) {
-        card.english = correctWord.english;
-      } else {
-        const wrongWord = selectedWrongAnswers.find(w => w.phonetic === card.phonetic);
-        if (wrongWord) {
-          card.english = wrongWord.english;
-        }
-      }
-    });
 
     // Shuffle cards
     const shuffledCards = cards.sort(() => Math.random() - 0.5);
@@ -106,7 +97,7 @@ export const WordsMultipleChoiceExercise: React.FC<WordsMultipleChoiceExercisePr
     return (
       <div className="exercise-loading">
         <div className="loading-spinner"></div>
-        <p>📚 Loading vocabulary...</p>
+        <p>📝 Loading sentences...</p>
       </div>
     );
   }
@@ -131,8 +122,8 @@ export const WordsMultipleChoiceExercise: React.FC<WordsMultipleChoiceExercisePr
       level={level}
       onComplete={onComplete}
       onBack={onBack}
-      generateExercise={generateWordExercise}
-      showPhonetic={showPhonetic} // Pass showPhonetic
+      generateExercise={generateSentenceExercise}
+      showPhonetic={showPhonetic} // Pass the new prop to Exercise
       onProgress={onProgress}
       currentProgress={currentProgress}
     />

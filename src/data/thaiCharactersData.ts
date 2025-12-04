@@ -1,5 +1,7 @@
 import type { ThaiCharacter } from '../types';
 
+export type { ThaiCharacter };
+
 export const thaiConsonants: ThaiCharacter[] = [
   // High consonants
   { thai: 'ก', phonetic: 'k', name: 'ko kai' },

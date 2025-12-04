@@ -1,6 +1,6 @@
 import React from 'react';
-import type { Exercise as ExerciseType, ExerciseCard, Level, ExerciseTarget } from '../types';
-import { thaiConsonants, thaiVowels, getRandomWrongAnswers } from '../data/thaiData';
+import type { Exercise as ExerciseType, ExerciseCard, Level, ExerciseTarget } from '../../types';
+import { thaiConsonants, thaiVowels, getRandomWrongAnswers } from '../../data/thaiCharactersData';
 import { Exercise } from './Exercise';
 
 interface CharactersExerciseProps {

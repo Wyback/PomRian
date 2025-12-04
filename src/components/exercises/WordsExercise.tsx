@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import type { Exercise as ExerciseType, Level } from '../types';
-import { generateSentences, type GeneratedSentence, playCorrectSound, playIncorrectSound } from '../services/llmService';
-import { useThaiSpeech } from '../services/ttsService';
+import type { Exercise as ExerciseType, Level } from '../../types';
+import { generateWords, type GeneratedWord } from '../../services/llmService';
+import { playCorrectSound, playIncorrectSound } from '../../services/soundService';
 
-interface SpeechSentencesInputExerciseProps {
+interface WordsExerciseProps {
   level: Level;
   onComplete: (levelId: number) => void;
   onBack: () => void;
@@ -12,7 +12,7 @@ interface SpeechSentencesInputExerciseProps {
   currentProgress?: number;
 }
 
-export const SpeechSentencesInputExercise: React.FC<SpeechSentencesInputExerciseProps> = ({
+export const WordsExercise: React.FC<WordsExerciseProps> = ({
   level,
   onComplete,
   onBack,
@@ -20,7 +20,7 @@ export const SpeechSentencesInputExercise: React.FC<SpeechSentencesInputExercise
   onProgress,
   currentProgress = 0,
 }) => {
-  const [sentences, setSentences] = useState<GeneratedSentence[]>([]);
+  const [words, setWords] = useState<GeneratedWord[]>([]);
   const [currentExercise, setCurrentExercise] = useState<ExerciseType | null>(null);
   const [userInput, setUserInput] = useState('');
   const [showResult, setShowResult] = useState(false);
@@ -30,47 +30,46 @@ export const SpeechSentencesInputExercise: React.FC<SpeechSentencesInputExercise
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { speak, isPlaying, isSupported } = useThaiSpeech(currentExercise?.target.thai || '');
-
   useEffect(() => {
-    const loadSentences = async () => {
+    const loadWords = async () => {
       try {
         setLoading(true);
         setError(null);
-        const generatedSentences = await generateSentences(30); // More sentences for variety
-        setSentences(generatedSentences);
-        const newExercise = generateSentenceExercise(generatedSentences);
-        setCurrentExercise(newExercise);
+        const generatedWords = await generateWords(30);
+        setWords(generatedWords);
+        if (!currentExercise) {
+          setCurrentExercise(generateWordExercise(generatedWords));
+        }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load sentences');
-        console.error('Failed to load sentences:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load words');
+        console.error('Failed to load words:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    loadSentences();
-  }, [isSupported]);
+    loadWords();
+  }, []);
 
-  const generateSentenceExercise = (sentenceList: GeneratedSentence[]): ExerciseType => {
-    if (sentenceList.length === 0) {
-      throw new Error('No sentences available for exercise generation');
+  const generateWordExercise = (wordList: GeneratedWord[]): ExerciseType => {
+    if (wordList.length === 0) {
+      throw new Error('No words available for exercise generation');
     }
 
-    const correctSentence = sentenceList[Math.floor(Math.random() * sentenceList.length)];
+    const correctWord = wordList[Math.floor(Math.random() * wordList.length)];
 
     return {
       level: level.id,
       target: {
-        thai: correctSentence.thai,
-        phonetic: correctSentence.phonetic,
-        english: correctSentence.english,
+        thai: correctWord.thai,
+        phonetic: correctWord.phonetic,
+        english: correctWord.english,
       },
       cards: [], // Not used in input exercises
       correctAnswer: {
         id: 'correct',
         thai: '',
-        phonetic: correctSentence.phonetic,
+        phonetic: correctWord.phonetic,
         isCorrect: true,
       },
       completed: false,
@@ -95,16 +94,16 @@ export const SpeechSentencesInputExercise: React.FC<SpeechSentencesInputExercise
       playIncorrectSound();
     }
 
+    // Auto-advance after showing result
     setTimeout(() => {
       if (correctCount + (correct ? 1 : 0) >= totalExercises) {
         onComplete(level.id);
       } else {
-        const newExercise = generateSentenceExercise(sentences);
-        setCurrentExercise(newExercise);
+        setCurrentExercise(generateWordExercise(words));
         setUserInput('');
         setShowResult(false);
       }
-    }, 2500); // Slightly longer for sentences
+    }, 2000);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -117,7 +116,7 @@ export const SpeechSentencesInputExercise: React.FC<SpeechSentencesInputExercise
     return (
       <div className="exercise-loading">
         <div className="loading-spinner"></div>
-        <p>🔊 Loading speech sentences...</p>
+        <p>📚 Loading vocabulary...</p>
       </div>
     );
   }
@@ -154,15 +153,14 @@ export const SpeechSentencesInputExercise: React.FC<SpeechSentencesInputExercise
       </div>
 
       <div className="exercise-content">
-        <div className="speech-playback">
-          {!isSupported && <p className="error-message">Speech synthesis not supported in your browser.</p>}
-          <button onClick={speak} disabled={!isSupported || isPlaying} className="play-button">
-            {isPlaying ? '⏸️' : '▶️'}
-          </button>
-        </div>
 
-        <div className="target-display">
-          <div className="target-thai-sentence">{currentExercise.target.thai}</div>
+        <div className="exercise-target">
+          <div className="target-display">
+            <div className="target-thai-large">{currentExercise.target.thai}</div>
+            {currentExercise.target.english && (
+              <div className="target-english">{currentExercise.target.english}</div>
+            )}
+          </div>
         </div>
 
         <div className="input-section">

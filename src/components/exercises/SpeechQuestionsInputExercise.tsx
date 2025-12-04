@@ -1,18 +1,19 @@
-import React, { useState } from 'react';
-import type { Exercise as ExerciseType, Level } from '../types';
-import { thaiConsonants, thaiVowels } from '../data/thaiData';
-import { playCorrectSound, playIncorrectSound } from '../services/llmService';
+import React, { useState, useEffect } from 'react';
+import type { Exercise as ExerciseType, Level } from '../../types';
+import { generateDailyLifeQuestions, type GeneratedQuestion } from '../../services/llmService';
+import { playCorrectSound, playIncorrectSound } from '../../services/soundService';
+import { useThaiSpeech } from '../../services/ttsService';
 
-interface CharactersAdvancedExerciseProps {
+interface SpeechQuestionsInputExerciseProps {
   level: Level;
   onComplete: (levelId: number) => void;
   onBack: () => void;
-  showPhonetic?: boolean; // Add optional showPhonetic prop
+  showPhonetic: boolean; // New prop for phonetic visibility
   onProgress?: (correctAnswers: number) => void;
   currentProgress?: number;
 }
 
-export const CharactersAdvancedExercise: React.FC<CharactersAdvancedExerciseProps> = ({
+export const SpeechQuestionsInputExercise: React.FC<SpeechQuestionsInputExerciseProps> = ({
   level,
   onComplete,
   onBack,
@@ -20,40 +21,62 @@ export const CharactersAdvancedExercise: React.FC<CharactersAdvancedExerciseProp
   onProgress,
   currentProgress = 0,
 }) => {
+  const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
   const [currentExercise, setCurrentExercise] = useState<ExerciseType | null>(null);
   const [userInput, setUserInput] = useState('');
   const [showResult, setShowResult] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
   const [totalExercises] = useState(10);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const generateCharacterExercise = (): ExerciseType => {
-    // Combine consonants and vowels for more variety
-    const allCharacters = [...thaiConsonants, ...thaiVowels];
-    const randomChar = allCharacters[Math.floor(Math.random() * allCharacters.length)];
+  const { speak, isPlaying, isSupported } = useThaiSpeech(currentExercise?.target.thai || '');
+
+  useEffect(() => {
+    const loadQuestions = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const generatedQuestions = await generateDailyLifeQuestions(30); // More questions for variety
+        setQuestions(generatedQuestions);
+        const newExercise = generateQuestionExercise(generatedQuestions);
+        setCurrentExercise(newExercise);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load questions');
+        console.error('Failed to load questions:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadQuestions();
+  }, [isSupported]);
+
+  const generateQuestionExercise = (questionList: GeneratedQuestion[]): ExerciseType => {
+    if (questionList.length === 0) {
+      throw new Error('No questions available for exercise generation');
+    }
+
+    const correctQuestion = questionList[Math.floor(Math.random() * questionList.length)];
 
     return {
       level: level.id,
       target: {
-        thai: randomChar.thai,
-        phonetic: randomChar.phonetic,
+        thai: correctQuestion.thai,
+        phonetic: correctQuestion.phoneticAnswer,
+        english: correctQuestion.englishAnswer,
       },
       cards: [], // Not used in input exercises
       correctAnswer: {
         id: 'correct',
         thai: '',
-        phonetic: randomChar.phonetic,
+        phonetic: correctQuestion.phoneticAnswer,
         isCorrect: true,
       },
       completed: false,
     };
   };
-
-  React.useEffect(() => {
-    if (!currentExercise) {
-      setCurrentExercise(generateCharacterExercise());
-    }
-  }, [currentExercise]);
 
   const handleSubmit = () => {
     if (!currentExercise || showResult) return;
@@ -73,16 +96,16 @@ export const CharactersAdvancedExercise: React.FC<CharactersAdvancedExerciseProp
       playIncorrectSound();
     }
 
-    // Auto-advance after showing result
     setTimeout(() => {
       if (correctCount + (correct ? 1 : 0) >= totalExercises) {
         onComplete(level.id);
       } else {
-        setCurrentExercise(generateCharacterExercise());
+        const newExercise = generateQuestionExercise(questions);
+        setCurrentExercise(newExercise);
         setUserInput('');
         setShowResult(false);
       }
-    }, 2000);
+    }, 2500);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -90,6 +113,30 @@ export const CharactersAdvancedExercise: React.FC<CharactersAdvancedExerciseProp
       handleSubmit();
     }
   };
+
+  if (loading) {
+    return (
+      <div className="exercise-loading">
+        <div className="loading-spinner"></div>
+        <p>🔊 Loading daily life questions...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="exercise-error">
+        <h3>❌ Error Occurred</h3>
+        <p>{error}</p>
+        <button
+          className="retry-button"
+          onClick={() => window.location.reload()}
+        >
+          🔄 Try Again
+        </button>
+      </div>
+    );
+  }
 
   if (!currentExercise) {
     return <div className="loading">Loading exercise...</div>;
@@ -108,13 +155,15 @@ export const CharactersAdvancedExercise: React.FC<CharactersAdvancedExerciseProp
       </div>
 
       <div className="exercise-content">
+        <div className="speech-playback">
+          {!isSupported && <p className="error-message">Speech synthesis not supported in your browser.</p>}
+          <button onClick={speak} disabled={!isSupported || isPlaying} className="play-button">
+            {isPlaying ? '⏸️' : '▶️'}
+          </button>
+        </div>
 
-        <div className="exercise-target">
-          <div className="target-display">
-            <div className="target-thai-large">{currentExercise.target.thai}</div>
-            {/* Always show phonetic for this exercise */}
-            <div className="target-english">[{currentExercise.target.phonetic}]</div>
-          </div>
+        <div className="target-display">
+          <div className="target-thai-large">{currentExercise.target.thai}</div>
         </div>
 
         <div className="input-section">
@@ -139,7 +188,7 @@ export const CharactersAdvancedExercise: React.FC<CharactersAdvancedExerciseProp
 
         {showResult && (
           <div className={`result ${isCorrect ? 'correct' : 'incorrect'}`}>
-            {isCorrect ? '✅ Correct!' : `❌ Incorrect! The correct answer is: ${currentExercise.target.phonetic}`}
+            {isCorrect ? '✅ Correct!' : `❌ Incorrect! The correct answer is: ${showPhonetic ? currentExercise.target.phonetic : '[Hidden]'}`}
           </div>
         )}
       </div>
